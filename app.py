@@ -106,18 +106,33 @@ class Handler(BaseHTTPRequestHandler):
 
     def trusted(self):
         hosts = self.headers.get_all('Host', [])
-        if len(hosts) != 1 or (self.server.hosts is not None and hosts[0] not in self.server.hosts):
-            self.send(400, 'Invalid Host header. Use the printed localhost URL.')
+        if len(hosts) != 1:
+            self.send(400, 'Invalid Host header.')
             return False
+        host_hdr = hosts[0].lower()
+        if self.server.hosts is not None:
+            is_allowed = (
+                host_hdr in self.server.hosts or
+                host_hdr.endswith('.trycloudflare.com') or
+                host_hdr.endswith('.onrender.com') or
+                host_hdr.endswith('.railway.app') or
+                host_hdr.split(':')[0] in ('127.0.0.1', 'localhost', '0.0.0.0')
+            )
+            if not is_allowed:
+                self.send(400, 'Invalid Host header.')
+                return False
         origins = self.headers.get_all('Origin', [])
         if origins:
             if len(origins) != 1:
                 self.send(403, 'Untrusted Origin.')
                 return False
-            valid_origins = {f'{self.server.scheme}://{hosts[0]}'}
+            proto = self.headers.get('X-Forwarded-Proto', self.server.scheme)
+            valid_origins = {f'{proto}://{hosts[0]}', f'http://{hosts[0]}', f'https://{hosts[0]}'}
             if self.server.hosts:
                 for h in self.server.hosts:
-                    valid_origins.add(f'{self.server.scheme}://{h}')
+                    valid_origins.add(f'{proto}://{h}')
+                    valid_origins.add(f'http://{h}')
+                    valid_origins.add(f'https://{h}')
             if origins[0] not in valid_origins and self.server.hosts is not None:
                 self.send(403, 'Untrusted Origin.')
                 return False
