@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: securepasswordstorage
+    runtime: python
+    buildCommand: "echo 'No extra dependencies needed (pure standard library)'"
+    startCommand: "python3 app.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ALLOWED_HOSTS
+        value: "*"
