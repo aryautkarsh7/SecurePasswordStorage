@@ -29,12 +29,28 @@ def date(value):
     return datetime.fromtimestamp(value, timezone.utc).strftime('%d %b %Y, %H:%M:%S UTC')
 
 
-HOW = '''<section class="card" id="how"><p class="eyebrow">THE CRYPTOGRAPHY</p>
-<h2>How it works</h2><div class="explain">
-<div><h3>01 · Hash, don’t encrypt</h3><p>Encryption can be reversed with a key. Password hashing derives a value for verification; there is no decryption step. Plaintext storage exposes every password if the database is stolen.</p></div>
-<div><h3>02 · Add a unique salt</h3><p>Each password gets 16 random bytes. A salt is public, not a secret. Two users choosing the same password get different salts and hashes, defeating precomputed hash tables.</p></div>
-<div><h3>03 · SHA-256 digest</h3><p>The salted password bytes are passed through SHA-256, producing a 32-byte (256-bit) digest. This is a one-way function: the original password cannot be recovered from the digest.</p></div>
-<div><h3>04 · Verify without recovering</h3><p>At login, we concatenate the stored salt with the submitted password and hash again. A constant-time comparison checks the result against the stored digest.</p></div></div></section>'''
+HOW = '''<section class="card explain-section" id="how">
+<span class="eyebrow">Cryptographic Principles</span>
+<h2>How Password Security Works in this System</h2>
+<div class="explain">
+<div class="explain-item">
+<h3>01 · One-Way Hashing (SHA-256)</h3>
+<p>Passwords are never encrypted with keys because keys can be compromised. Instead, an irreversible cryptographic hash (SHA-256) produces a 256-bit digest. Plaintext is never stored.</p>
+</div>
+<div class="explain-item">
+<h3>02 · Unique 16-Byte Random Salt</h3>
+<p>Each user gets 16 cryptographically random bytes via CSPRNG. Two users choosing the identical password receive different salts and different digests, defeating precomputed rainbow tables.</p>
+</div>
+<div class="explain-item">
+<h3>03 · Timing-Safe Verification</h3>
+<p>During login, stored salt and entered password are re-hashed and compared via <code>hmac.compare_digest</code> in constant time, preventing side-channel network timing attacks.</p>
+</div>
+<div class="explain-item">
+<h3>04 · Zero Plaintext Storage</h3>
+<p>The database stores only <code>sha256$salt$digest</code>. Even an attacker with complete SQLite database read access cannot recover plaintext passwords.</p>
+</div>
+</div>
+</section>'''
 
 
 def password_field(name, label, autocomplete='new-password'):
@@ -101,7 +117,47 @@ class Handler(BaseHTTPRequestHandler):
 
     def page(self, title, content, status=200, message=''):
         notice = f'<div class="notice" role="alert">{esc(message)}</div>' if message else ''
-        body = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(title)} · Secure Password Storage</title><link rel="stylesheet" href="/static/style.css"><script defer src="/static/app.js"></script></head><body><header><a class="brand" href="/">◈ <span>Secure<span class="mint">Pass</span></span></a><nav aria-label="Main navigation"><a href="/dashboard">Dashboard</a><a href="/#how">How it works</a></nav></header><main>{notice}{content}</main><footer>Alliance University · B.Tech CSE · Cryptography and Network Security<br>Academic demonstration · Local authentication system</footer></body></html>'''
+        body = f'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(title)} · Secure Password Storage System</title>
+<link rel="stylesheet" href="/static/style.css">
+<script defer src="/static/app.js"></script>
+</head>
+<body>
+<header>
+  <div class="header-container">
+    <a class="brand" href="/">
+      <span class="brand-badge">AU</span>
+      <div>
+        <div class="brand-title">Secure<span>Pass</span></div>
+        <span class="brand-sub">Microproject 5 · CNS</span>
+      </div>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="/login">Sign In</a>
+      <a href="/register">Register</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/#how">How It Works</a>
+    </nav>
+  </div>
+</header>
+<main>
+{notice}
+{content}
+</main>
+<footer>
+  <div class="footer-content">
+    <div><strong>Alliance University</strong> · Alliance School of Advanced Computing</div>
+    <div class="footer-team">Microproject 5: Secure Password Storage System (Course: E1CSA311)</div>
+    <div class="footer-team">Team: Arya Utkarsh (2411021060543) · Akshat Kishore (2411021060555) · D Sai Shikhar Achari (2411021060542) · Joshua K R (2411021060531)</div>
+    <div class="footer-team">Supervisor: Dr. Ambairam Muthu Sivakrishna · HOD: Dr. Oswalt Manoj S</div>
+  </div>
+</footer>
+</body>
+</html>'''
         self.send(status, body)
 
     def trusted(self):
@@ -137,8 +193,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(403, 'Untrusted Origin.')
                 return False
         if self.headers.get('Sec-Fetch-Site') == 'cross-site':
-            self.send(403, 'Cross-site request rejected.')
-            return False
+            mode = self.headers.get('Sec-Fetch-Mode', '')
+            dest = self.headers.get('Sec-Fetch-Dest', '')
+            # Allow top-level browser navigation (e.g. clicking a link to open the site)
+            if not (self.command == 'GET' and (mode == 'navigate' or dest == 'document')):
+                self.send(403, 'Cross-site request rejected.')
+                return False
         return True
 
     def load_session(self, db):
@@ -199,7 +259,39 @@ class Handler(BaseHTTPRequestHandler):
         title = 'Create your account' if register else 'Welcome back'
         path = '/register' if register else '/login'
         confirm = password_field('confirm', 'Confirm password') if register else ''
-        content = f'''<div class="auth-layout"><section class="intro"><p class="eyebrow">SECURE PASSWORD STORAGE SYSTEM</p><h1>Your password.<br><span class="mint">Never stored.</span></h1><p class="lead">See cryptography at work. Create an account, sign in, and inspect exactly how your password is protected.</p><div class="chips"><span>SHA-256</span><span>Unique random salts</span><span>Constant-time verify</span></div><p>Authentication, not a password manager. Your original password cannot be retrieved from this interface.</p></section><section class="card"><p class="eyebrow">{'GET STARTED' if register else 'YOUR ACCOUNT'}</p><h2>{title}</h2><form method="post" action="{path}">{self.hidden()}<label for="username">Username</label><input id="username" name="username" autocomplete="username" required maxlength="30" aria-describedby="username-help"><p class="hint" id="username-help">3–30 letters, numbers, or underscores. Case-insensitive.</p>{password_field('password', 'Password', 'new-password' if register else 'current-password')}<p id="password-help" class="hint">15–128 characters. Spaces and Unicode are welcome.</p>{confirm}<button class="primary" type="submit">{'Create account' if register else 'Sign in →'}</button></form><p>{'<a href="/login">Already registered? Sign in</a>' if register else '<a href="/register">New here? Create an account</a>'}</p></section></div>{HOW}'''
+        content = f'''<div class="auth-layout">
+<section class="intro">
+  <span class="eyebrow">Cryptographic Authentication</span>
+  <h1>Secure Password<br><span class="accent-text">Storage System</span></h1>
+  <p class="lead">An academic demonstration of secure password hashing using SHA-256 with unique random salts, constant-time verification, and zero plaintext storage.</p>
+  <div class="chips">
+    <span>SHA-256 Algorithm</span>
+    <span>16-Byte CSPRNG Salt</span>
+    <span>Constant-Time HMAC</span>
+    <span>SQLite Protected</span>
+  </div>
+  <p class="intro-note">This is a student demonstration of one-way password hashing principles. Passwords cannot be decrypted or retrieved from the database.</p>
+</section>
+<section class="card">
+  <span class="eyebrow">{'GET STARTED' if register else 'AUTHENTICATION'}</span>
+  <h2>{title}</h2>
+  <p class="card-desc">{'Register a new user to inspect its unique salt and hash.' if register else 'Sign in to access your live security dashboard.'}</p>
+  <form method="post" action="{path}">
+    {self.hidden()}
+    <label for="username">Username</label>
+    <input id="username" name="username" autocomplete="username" required maxlength="30" aria-describedby="username-help">
+    <p class="hint" id="username-help">3–30 letters, numbers, or underscores. Case-insensitive.</p>
+    {password_field('password', 'Password', 'new-password' if register else 'current-password')}
+    <p id="password-help" class="hint">15–128 characters. Spaces and special characters are preserved.</p>
+    {confirm}
+    <button class="primary" type="submit">{'Create Account' if register else 'Sign In →'}</button>
+  </form>
+  <div class="form-footer">
+    {'<a href="/login">Already registered? Sign in</a>' if register else '<a href="/register">New student? Create an account</a>'}
+  </div>
+</section>
+</div>
+{HOW}'''
         self.page(title, content, status, message)
 
     def dashboard(self, db, message='', status=200):
@@ -207,7 +299,79 @@ class Handler(BaseHTTPRequestHandler):
         algorithm, salt, digest = user['password_value'].split('$')
         events = db.execute('SELECT event,created FROM activity WHERE user_id=? ORDER BY id DESC LIMIT 20', (user['id'],)).fetchall()
         rows = ''.join(f'<li><span>{esc(e["event"])}</span><time>{date(e["created"])}</time></li>' for e in events)
-        content = f'''<section class="dashboard-heading"><div><p class="eyebrow">YOUR SECURITY DASHBOARD</p><h1>Welcome, {esc(user['username'])}.</h1><p>Account created {date(user['created'])}</p></div><form method="post" action="/logout">{self.hidden()}<button type="submit">Log out</button></form></section><div class="stats"><div class="card"><span>ALGORITHM</span><strong>SHA-256 (salted)</strong></div><div class="card"><span>DIGEST SIZE</span><strong>32 bytes (256 bits)</strong></div><div class="card"><span>SESSION LIFETIME</span><strong>30 minutes</strong></div></div><section class="card" id="inspector"><p class="eyebrow">01 / PASSWORD STORAGE INSPECTOR</p><h2>What the database actually stores</h2><p>Only your own record is shown. This inspector is for the academic demonstration and would normally be omitted from a production authentication interface.</p><dl><dt>Algorithm identifier</dt><dd>{esc(algorithm)}</dd><dt>Salt size</dt><dd>{len(bytes.fromhex(salt))} bytes (128 bits)</dd><dt>Hash size</dt><dd>{len(bytes.fromhex(digest))} bytes (256 bits)</dd><dt>Actual stored salt · hexadecimal</dt><dd><code>{esc(salt)}</code></dd><dt>Actual derived hash · hexadecimal</dt><dd><code>{esc(digest)}</code></dd><dt>Complete encoded database value</dt><dd><code>{esc(user['password_value'])}</code></dd></dl><p class="hint">Format: algorithm$salt_hex$hash_hex. No plaintext password is stored.</p></section><div class="columns"><section class="card" id="change"><p class="eyebrow">02 / CHANGE PASSWORD</p><h2>A fresh password. A fresh salt.</h2><p>Changing your password signs out every session for your account.</p><form method="post" action="/change-password">{self.hidden()}{password_field('current', 'Current password', 'current-password')}{password_field('new', 'New password')}<p class="hint" id="password-help">15–128 characters. Must differ from your current password.</p>{password_field('confirm', 'Confirm new password')}<button class="primary" type="submit">Change password</button></form></section><section class="card"><p class="eyebrow">03 / RECENT ACCOUNT ACTIVITY</p><h2>Your security timeline</h2><p>Most recent 20 events · UTC</p><ul class="activity">{rows}</ul></section></div>{HOW}'''
+        content = f'''<section class="dashboard-heading">
+  <div>
+    <span class="eyebrow">SECURITY DASHBOARD</span>
+    <h1>Welcome, {esc(user['username'])}.</h1>
+    <p>Account created: {date(user['created'])}</p>
+  </div>
+  <form method="post" action="/logout">
+    {self.hidden()}
+    <button class="btn-logout" type="submit">Log out</button>
+  </form>
+</section>
+
+<div class="stats">
+  <div class="stat-card">
+    <span>ALGORITHM</span>
+    <strong>SHA-256 (salted)</strong>
+  </div>
+  <div class="stat-card">
+    <span>SALT SIZE</span>
+    <strong>16 bytes (128 bits)</strong>
+  </div>
+  <div class="stat-card">
+    <span>DIGEST LENGTH</span>
+    <strong>256 bits (64 hex chars)</strong>
+  </div>
+</div>
+
+<section class="card" id="inspector">
+  <span class="eyebrow">PASSWORD STORAGE INSPECTOR</span>
+  <h2>What the database actually stores</h2>
+  <p class="card-desc">Only your own record is shown below. This inspector is for academic demonstration to prove zero plaintext storage.</p>
+  <dl class="inspector-grid">
+    <dt>Algorithm identifier</dt>
+    <dd><strong>{esc(algorithm)}</strong></dd>
+    <dt>Salt size</dt>
+    <dd>{len(bytes.fromhex(salt))} bytes (128 bits of entropy)</dd>
+    <dt>Hash size</dt>
+    <dd>{len(bytes.fromhex(digest))} bytes (256 bits)</dd>
+    <dt>Stored salt (Hexadecimal)</dt>
+    <dd><code>{esc(salt)}</code></dd>
+    <dt>Derived digest (Hexadecimal)</dt>
+    <dd><code>{esc(digest)}</code></dd>
+    <dt>Complete encoded database value</dt>
+    <dd><code>{esc(user['password_value'])}</code></dd>
+  </dl>
+  <p class="hint">Format: <code>algorithm$salt_hex$hash_hex</code>. Notice that no plaintext password is stored anywhere in the database.</p>
+</section>
+
+<div class="columns">
+  <section class="card" id="change">
+    <span class="eyebrow">CHANGE PASSWORD</span>
+    <h2>Rotate Credentials</h2>
+    <p class="card-desc">Changing your password generates a completely fresh 16-byte salt and revokes existing sessions.</p>
+    <form method="post" action="/change-password">
+      {self.hidden()}
+      {password_field('current', 'Current password', 'current-password')}
+      {password_field('new', 'New password')}
+      <p class="hint" id="password-help">15–128 characters. Must differ from your current password.</p>
+      {password_field('confirm', 'Confirm new password')}
+      <button class="primary" type="submit">Change password</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <span class="eyebrow">RECENT ACCOUNT ACTIVITY</span>
+    <h2>Security Audit Log</h2>
+    <p class="card-desc">Chronological history of authentication actions for this account.</p>
+    <ul class="activity">
+      {rows}
+    </ul>
+  </section>
+</div>
+{HOW}'''
         self.page('Dashboard', content, status, message)
 
     def do_HEAD(self):
