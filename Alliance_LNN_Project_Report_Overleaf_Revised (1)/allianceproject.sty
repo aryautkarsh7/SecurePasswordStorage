@@ -1,0 +1,214 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{allianceproject}[2026/09/18 Alliance University Design Project Report]
+
+\RequirePackage[a4paper,left=1.5in,right=1in,top=1in,bottom=1in]{geometry}
+\RequirePackage{newtxtext,newtxmath}
+\RequirePackage{setspace}
+\onehalfspacing
+\RequirePackage{graphicx}
+\RequirePackage{booktabs}
+\RequirePackage{tabularx}
+\RequirePackage{longtable}
+\RequirePackage{multirow}
+\RequirePackage{array}
+\RequirePackage{amsmath}
+\RequirePackage{algorithm2e}
+\RequirePackage{float}
+\RequirePackage{placeins}
+\RequirePackage{pdflscape}
+\RequirePackage{pifont}
+\RequirePackage{enumitem}
+\RequirePackage{titlesec}
+\RequirePackage{tocloft}
+\RequirePackage{fancyhdr}
+\RequirePackage{caption}
+\RequirePackage{subcaption}
+\RequirePackage{url}
+\RequirePackage[backend=biber,style=numeric,sorting=nyt,giveninits=true]{biblatex}
+\RequirePackage[hidelinks]{hyperref}
+\RequirePackage{xcolor}
+\RequirePackage{etoolbox}
+
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+
+% University palette
+\definecolor{AllianceNavy}{HTML}{1D2940}
+\definecolor{AllianceMaroon}{HTML}{8C211B}
+
+% Metadata defaults
+\newcommand{\AUUniversity}{Alliance University}
+\newcommand{\AUSchool}{Alliance School of Advanced Computing}
+\newcommand{\AUDepartment}{Department of Computer Science and Engineering}
+\newcommand{\AUAddress}{Chikkahagade Cross, Chandapura--Anekal Main Road, Bengaluru--562106}
+\newcommand{\AUProjectTitle}{PROJECT TITLE}
+\newcommand{\AUProjectType}{Design Project -- I}
+\newcommand{\AUCourseCode}{5CS1990}
+\newcommand{\AUDegree}{Bachelor of Technology}
+\newcommand{\AUBranch}{Computer Science and Engineering}
+\newcommand{\AUAcademicYear}{2026--2027}
+\newcommand{\AUMonthYear}{Month 2026}
+\newcommand{\AUSupervisor}{Dr. Supervisor Name}
+\newcommand{\AUSupervisorDesignation}{Assistant Professor}
+\newcommand{\AUHOD}{Head of the Department}
+\newcommand{\AUChiefCoordinator}{Dr. M. Selvam}
+\newcommand{\AUProjectCoordinator}{Project Coordinator}
+\newcommand{\AULogo}{Alliance_University_Icon.png}
+\newcommand{\AUStudentRows}{Student Name & REGISTRATION NUMBER \\
+Student Name & REGISTRATION NUMBER \\
+Student Name & REGISTRATION NUMBER \\
+Student Name & REGISTRATION NUMBER \\
+}
+
+% Setter commands
+\newcommand{\projecttitle}[1]{\renewcommand{\AUProjectTitle}{#1}}
+\newcommand{\projecttype}[1]{\renewcommand{\AUProjectType}{#1}}
+\newcommand{\coursecode}[1]{\renewcommand{\AUCourseCode}{#1}}
+\newcommand{\degree}[1]{\renewcommand{\AUDegree}{#1}}
+\newcommand{\branch}[1]{\renewcommand{\AUBranch}{#1}}
+\newcommand{\department}[1]{\renewcommand{\AUDepartment}{#1}}
+\newcommand{\academicyear}[1]{\renewcommand{\AUAcademicYear}{#1}}
+\newcommand{\monthyear}[1]{\renewcommand{\AUMonthYear}{#1}}
+\newcommand{\supervisor}[2]{\renewcommand{\AUSupervisor}{#1}\renewcommand{\AUSupervisorDesignation}{#2}}
+\newcommand{\hod}[1]{\renewcommand{\AUHOD}{#1}}
+\newcommand{\chiefcoordinator}[1]{\renewcommand{\AUChiefCoordinator}{#1}}
+\newcommand{\projectcoordinator}[1]{\renewcommand{\AUProjectCoordinator}{#1}}
+\newcommand{\projectlogo}[1]{\renewcommand{\AULogo}{#1}}
+\newcommand{\studentrows}[1]{\renewcommand{\AUStudentRows}{#1}}
+
+% Headings and body
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\centering\fontsize{16}{19}\selectfont}
+  {CHAPTER \thechapter}{0.5ex}{\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{-10pt}{20pt}
+\titleformat{\section}{\bfseries\fontsize{14}{17}\selectfont}{\thesection}{0.75em}{}
+\titleformat{\subsection}{\bfseries\fontsize{12}{15}\selectfont}{\thesubsection}{0.75em}{}
+\setlength{\headheight}{15pt}
+\setlength{\parindent}{0.5in}
+\setlength{\parskip}{0pt}
+\setlist{itemsep=2pt,topsep=4pt}
+\captionsetup{font=small,labelfont=bf}
+\renewcommand{\bibname}{REFERENCES}
+
+% Header/footer for chapters
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small \AUSchool}
+\fancyhead[R]{\small \AUCourseCode\ -- \AUProjectType}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+\newcommand{\AllianceCoverPage}{%
+\begin{titlepage}\thispagestyle{empty}\centering
+\vspace*{0.15cm}
+{\bfseries\fontsize{18}{22}\selectfont \MakeUppercase{\AUProjectTitle}\par}
+\vspace{0.70cm}
+{\bfseries\fontsize{14}{17}\selectfont A PROJECT REPORT ON \AUCourseCode\ -- \MakeUppercase{\AUProjectType}\par}
+\vspace{0.55cm}
+{\fontsize{14}{17}\selectfont\itshape Submitted by\par}
+\vspace{0.30cm}
+{\renewcommand{\arraystretch}{1.12}%
+\begin{tabular}{>{\bfseries}l l}
+\AUStudentRows
+\end{tabular}\par}
+\vspace{0.45cm}
+{\fontsize{13}{16}\selectfont\itshape In partial fulfilment for the\par}
+\vspace{0.08cm}
+{\fontsize{13}{16}\selectfont\itshape award of the degree of\par}
+\vspace{0.25cm}
+{\bfseries\fontsize{16}{19}\selectfont \MakeUppercase{\AUDegree}\par}
+{\bfseries\fontsize{14}{17}\selectfont IN\par}
+{\bfseries\fontsize{14}{17}\selectfont \MakeUppercase{\AUBranch}\par}
+\vspace{0.50cm}
+{\fontsize{14}{17}\selectfont Under the Supervision of\par}
+{\bfseries\fontsize{14}{17}\selectfont \AUSupervisor\par}
+{\fontsize{12}{15}\selectfont \AUSupervisorDesignation\par}
+\vspace{0.30cm}
+\includegraphics[width=0.18\textwidth]{\AULogo}\par
+\vfill
+{\bfseries\fontsize{14}{17}\selectfont \AUDepartment\par}
+{\bfseries\fontsize{14}{17}\selectfont \AUSchool\par}
+{\bfseries\fontsize{16}{19}\selectfont \MakeUppercase{\AUUniversity}\par}
+{\fontsize{13}{16}\selectfont Bengaluru--562106\par}
+\vspace{0.18cm}
+{\bfseries\fontsize{14}{17}\selectfont \AUMonthYear\par}
+\end{titlepage}}
+
+\newcommand{\AllianceTitlePage}{\AllianceCoverPage}
+
+\newcommand{\AllianceCertificate}{%
+\begingroup
+% shrink the space \chapter* puts above and below the heading (report/book class)
+\makeatletter
+\renewcommand{\@makeschapterhead}[1]{%
+  \vspace*{-1cm}%
+  {\centering\Large\bfseries ##1\par}\vspace{0.6cm}}%
+\makeatother
+\chapter*{CERTIFICATE}\thispagestyle{plain}
+\begin{spacing}{1.3}\fontsize{12.5}{16}\selectfont
+\begin{center}
+{\bfseries \AUDepartment\\\AUSchool\\\AUUniversity\\\AUAddress}\par
+\end{center}
+\vspace{0.3cm}
+\noindent This is to certify that the \AUProjectType\ work entitled ``\textbf{\AUProjectTitle}'' is the bonafide work carried out by the students listed below and submitted in partial fulfilment of the requirements for the award of the degree \textbf{\AUDegree\ in \AUBranch} during the academic year \AUAcademicYear.\par
+\vspace{0.5cm}
+\begin{center}\begin{tabular}{ll}\AUStudentRows\end{tabular}\end{center}
+\vfill
+\noindent\begin{tabularx}{\textwidth}{X X}
+\textbf{\AUSupervisor} & \textbf{\AUHOD}\\
+SUPERVISOR & HEAD OF THE DEPARTMENT\\
+\AUSupervisorDesignation & \\
+\end{tabularx}\par
+\vspace{0.6cm}
+\noindent\textbf{External Examiners:}\par
+\vspace{0.4cm}
+\noindent 1. Name: \rule{6cm}{0.4pt}\hfill Signature: \rule{3cm}{0.4pt}\par
+\vspace{0.6cm}
+\noindent 2. Name: \rule{6cm}{0.4pt}\hfill Signature: \rule{3cm}{0.4pt}\par
+\end{spacing}
+\endgroup
+\clearpage}
+
+\newcommand{\AllianceDeclaration}{%
+\chapter*{DECLARATION}\addcontentsline{toc}{chapter}{Declaration}\thispagestyle{plain}
+\begin{onehalfspace}
+We hereby declare that the report titled ``\textbf{\AUProjectTitle}'' has been prepared in partial fulfilment of the requirements of the course \AUCourseCode\ -- \AUProjectType\ for the degree of \AUDegree\ in \AUBranch, under the supervision of \AUSupervisor. We confirm that this report represents our original work carried out as part of the project and that all sources used have been appropriately acknowledged. The work has not been submitted, in whole or in part, for any other academic award.
+\vspace{1cm}
+\begin{center}\begin{tabular}{lll}\textbf{Name} & \textbf{Registration No.} & \textbf{Signature}\\[0.35cm]
+Student Name & REGISTRATION NUMBER & \\
+Student Name & REGISTRATION NUMBER & \\
+Student Name & REGISTRATION NUMBER & \\
+Student Name & REGISTRATION NUMBER & \\
+\end{tabular}\end{center}
+\end{onehalfspace}\clearpage}
+
+\newcommand{\AllianceAcknowledgement}[1]{\chapter*{ACKNOWLEDGEMENT}\addcontentsline{toc}{chapter}{Acknowledgement}\thispagestyle{plain}\begin{onehalfspace}#1\end{onehalfspace}\clearpage}
+\newcommand{\AllianceAbstract}[1]{\chapter*{ABSTRACT}\addcontentsline{toc}{chapter}{Abstract}\thispagestyle{plain}\begin{doublespace}\fontsize{14}{20}\selectfont #1\end{doublespace}\clearpage}
+
+\newcommand{\AllianceFrontMatter}{%
+\pagenumbering{roman}
+\setcounter{page}{1}
+}
+\newcommand{\AllianceMainMatter}{%
+\clearpage\pagenumbering{arabic}\setcounter{page}{1}
+}
+
+\newenvironment{abbreviations}{\chapter*{LIST OF SYMBOLS, ABBREVIATIONS AND NOMENCLATURE}\addcontentsline{toc}{chapter}{List of Symbols, Abbreviations and Nomenclature}\begin{longtable}{p{0.22\textwidth}p{0.70\textwidth}}\textbf{Symbol/Abbreviation}&\textbf{Meaning}\\\hline}{\end{longtable}\clearpage}
+
+\newcommand{\ProjectChecklist}{%
+\chapter*{PROJECT REPORT COMPLIANCE CHECKLIST}
+\begin{tabularx}{\textwidth}{|p{0.55\textwidth}|c|X|}\hline
+\textbf{Requirement} & \textbf{Status} & \textbf{Remarks}\\\hline
+A4 size; prescribed margins & $\square$ & \\\hline
+Times New Roman / Times-compatible, 12 pt body & $\square$ & \\\hline
+1.5 line spacing in general text & $\square$ & \\\hline
+Cover, title, certificate, declaration, acknowledgement & $\square$ & \\\hline
+Abstract in 14 pt double spacing & $\square$ & \\\hline
+TOC, list of tables, list of figures, abbreviations & $\square$ & \\\hline
+Chapter numbering starts from Arabic page 1 & $\square$ & \\\hline
+References and appendices included & $\square$ & \\\hline
+\end{tabularx}\clearpage}

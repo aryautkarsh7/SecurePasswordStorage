@@ -1,0 +1,162 @@
+\chapter{Theoretical Background and Requirements}
+\label{chap:theory}
+
+\section{The SHA-256 Hash Function}
+\label{sec:theory_sha256}
+
+SHA-256 is a member of the Secure Hash Algorithm 2 (SHA-2) family, standardised by NIST in Federal Information Processing Standard (FIPS) 180-4. It maps an arbitrary-length bit string to a fixed-length 256-bit (32-byte) digest. Formally, the function is written as:
+
+\begin{equation}
+  H : \{0,1\}^{*} \to \{0,1\}^{256}
+  \label{eq:sha256_domain}
+\end{equation}
+
+\noindent where $\{0,1\}^{*}$ denotes the set of all finite binary strings. For a message $m$, the hash is:
+
+\begin{equation}
+  d = H(m) = \mathrm{SHA\text{-}256}(m)
+  \label{eq:sha256_notation}
+\end{equation}
+
+\subsection{Internal Structure}
+\label{sec:theory_sha256_internal}
+
+SHA-256 processes input in 512-bit (64-byte) blocks through a Merkle--Damg\r{a}rd construction. The message $m$ is first padded to a length congruent to $448 \pmod{512}$ bits, and the 64-bit big-endian representation of the original message length is appended to produce a padded message $m'$ of length $N \times 512$ bits. The function then iterates a compression function $f$ over each block:
+
+\begin{equation}
+  s_0 = H_0, \qquad s_i = f(s_{i-1}, B_i) \text{ for } i = 1, \ldots, N, \qquad d = s_N
+  \label{eq:sha256_merkle}
+\end{equation}
+
+\noindent where $H_0$ is a 256-bit initialisation vector derived from the fractional parts of the square roots of the first eight primes, $B_i$ is the $i$-th 512-bit block, and $s_N$ is the final digest. The compression function $f$ uses 64 rounds of bitwise operations (choice, majority, sigma rotations) and 64 round constants derived from the fractional parts of the cube roots of the first 64 primes.
+
+\subsection{Security Properties}
+\label{sec:theory_sha256_properties}
+
+SHA-256 provides three fundamental security properties relevant to password hashing:
+
+\begin{itemize}
+  \item \textbf{Preimage resistance.} Given a digest $d$, it is computationally infeasible to find any $m$ such that $H(m) = d$. This ensures that an attacker who obtains a stored hash cannot reverse it to recover the password. The best known preimage attack against the full SHA-256 requires approximately $2^{256}$ operations---far beyond any feasible computation.
+
+  \item \textbf{Second preimage resistance.} Given a message $m_1$, it is computationally infeasible to find a distinct $m_2$ such that $H(m_1) = H(m_2)$. This property ensures that knowledge of one input does not allow construction of a colliding input.
+
+  \item \textbf{Collision resistance.} It is computationally infeasible to find any two distinct messages $m_1 \neq m_2$ such that $H(m_1) = H(m_2)$. The best known collision attacks against SHA-256 have complexity approximately $2^{128}$ by the birthday bound, which remains computationally infeasible.
+
+  \item \textbf{Avalanche effect.} A single-bit change in the input produces, on average, a change in approximately 50\% of the output bits, making it impossible to infer any information about the input from partial knowledge of the output.
+\end{itemize}
+
+\section{Salting}
+\label{sec:theory_salting}
+
+A \emph{salt} is a random value generated independently for each stored password record and prepended (or appended) to the password before hashing. In this system, a 16-byte (128-bit) salt is generated using Python's \texttt{secrets.token\_bytes(16)}, which draws from the operating-system cryptographically secure pseudorandom number generator (CSPRNG).
+
+\subsection{Defeating Rainbow Tables}
+\label{sec:theory_rainbow}
+
+A rainbow table attack exploits the fact that if two users choose the same password, their unsalted hashes are identical, and a precomputed table can reveal both simultaneously. With unique salts, the effective input to the hash function for each record is:
+
+\begin{equation}
+  \text{input}_i = s_i \| p
+  \label{eq:salted_input}
+\end{equation}
+
+\noindent where $s_i$ is the per-user 128-bit random salt and $p$ is the password as a UTF-8 byte string. The stored credential is then:
+
+\begin{equation}
+  \text{stored}_i = H(s_i \| p) = \mathrm{SHA\text{-}256}(s_i \| p)
+  \label{eq:salted_hash}
+\end{equation}
+
+Because $s_i$ is chosen uniformly at random from a $2^{128}$-element space, no precomputed table can cover even a negligible fraction of the possible salted inputs. An attacker must crack each record individually, starting the hash computation from scratch for each candidate password.
+
+\subsection{Salt Uniqueness and Storage}
+\label{sec:theory_salt_storage}
+
+The salt must be stored alongside the hash so that verification can reproduce the exact salted input. In this project the salt and hash are stored together in an encoded string:
+
+\begin{equation}
+  \text{encoded} = \texttt{"sha256\$"} \| \mathrm{hex}(s) \| \texttt{"\$"} \| \mathrm{hex}(H(s \| p))
+  \label{eq:encoded_format}
+\end{equation}
+
+\noindent This format is self-describing: the algorithm identifier, salt, and hash are separated by \texttt{\$} delimiters, allowing the \texttt{verify\_password} function to parse all required fields from a single string without additional database columns.
+
+\section{Constant-Time Comparison and Timing Side-Channels}
+\label{sec:theory_timing}
+
+Password verification involves comparing the recomputed hash against the stored hash. A naive implementation using Python's built-in string equality operator (\texttt{==}) terminates as soon as the first differing byte is found, producing a response time that is inversely correlated with the length of the common prefix. An attacker who can measure server response time with sufficient precision can exploit this variation---submitting crafted hashes and observing which ones take slightly longer---to reconstruct the stored hash one byte at a time. This is a \emph{timing side-channel attack}.
+
+The countermeasure is a \emph{constant-time comparison}: a comparison that always examines every byte of both operands, regardless of where the first difference occurs. Python's standard library provides this via \texttt{hmac.compare\_digest(a, b)}, which is implemented in C and guaranteed to run in time $O(|a|)$ independent of the content of $a$ and $b$. Formally, for two byte strings $a$ and $b$ of the same length $n$:
+
+\begin{equation}
+  \mathrm{compare\_digest}(a, b) = \left(\bigoplus_{i=1}^{n} (a_i \oplus b_i)\right) = 0
+  \label{eq:constant_time}
+\end{equation}
+
+\noindent where $\oplus$ denotes XOR. The result is \texttt{True} if and only if all bytes are identical, and the execution time is independent of the content.
+
+\section{CSRF Tokens and HMAC}
+\label{sec:theory_csrf}
+
+Cross-Site Request Forgery (CSRF) is an attack in which a malicious web page causes the victim's browser to submit an authenticated request to a target site without the user's knowledge. The standard countermeasure is a \emph{synchroniser token}: a secret value bound to the user's session that must be submitted with every state-changing request and that a third-party site cannot obtain.
+
+In this project, CSRF tokens are generated using HMAC-SHA256:
+
+\begin{equation}
+  \tau = \mathrm{HMAC\text{-}SHA256}(k_{\text{session}},\; \texttt{"csrf"})
+  \label{eq:csrf_token}
+\end{equation}
+
+\noindent where $k_{\text{session}}$ is the raw (pre-storage) session token. The HMAC construction guarantees that the token is unpredictable without knowledge of the session secret, and that it changes with each new session. Because the HMAC key is never transmitted to the client, a cross-origin page cannot forge a valid token.
+
+\section{Rate Limiting}
+\label{sec:theory_rate}
+
+Rate limiting protects against online brute-force attacks by capping the number of authentication attempts an attacker can make in a given time window. This project implements a bucket-based rate limiter with a 5-minute rolling window: at most 5 failed login attempts are permitted per username per 5-minute period. A failed attempt increments the attempt counter and records the timestamp; successful login resets the counter; and any request arriving when the counter has reached its limit is rejected with an error response before the hash comparison is performed.
+
+\section{Session Management}
+\label{sec:theory_sessions}
+
+Session tokens are 32-byte values generated by the CSPRNG. Before storage in the database, each token is hashed with SHA-256:
+
+\begin{equation}
+  t_{\text{stored}} = \mathrm{SHA\text{-}256}(t_{\text{raw}})
+  \label{eq:session_hash}
+\end{equation}
+
+\noindent The raw token is delivered to the client in an \texttt{HttpOnly; SameSite=Lax} cookie. Because the database stores only the hash, a database read does not yield a usable session token, limiting the damage from database compromise. On password change, all existing session records for the user are deleted, forcing re-authentication on all devices.
+
+\section{System Requirements}
+\label{sec:theory_requirements}
+
+\subsection{Functional Requirements}
+\label{sec:theory_func_req}
+
+\begin{enumerate}
+  \item \textbf{FR-1: User Registration.} The system shall accept a username and password, validate the username format (alphanumeric, 3--32 characters), enforce a minimum password length of 8 characters, generate a unique random salt, compute a salted SHA-256 hash, and store the encoded credential in the database.
+
+  \item \textbf{FR-2: User Login.} The system shall accept a username and password, retrieve the stored encoded credential, recompute the salted hash, perform a constant-time comparison, and either issue a new session token or return a generic error message without revealing whether the username or password was incorrect.
+
+  \item \textbf{FR-3: Password Change.} The system shall allow an authenticated user to change their password, requiring the current password for confirmation, generating a new salt, computing a new hash, revoking all existing sessions, and persisting the updated credential.
+
+  \item \textbf{FR-4: Logout.} The system shall allow an authenticated user to invalidate their current session, removing the session token from both the client cookie and the server database.
+
+  \item \textbf{FR-5: Security Dashboard.} The system shall display the stored salt (hex-encoded) and stored hash (hex-encoded) for the authenticated user's account, making the cryptographic artefacts directly observable.
+\end{enumerate}
+
+\subsection{Non-Functional Requirements}
+\label{sec:theory_nonfunc_req}
+
+\begin{enumerate}
+  \item \textbf{NFR-1: No Plaintext Storage.} The database must contain no recoverable representation of any user's password. All integration tests must verify this property by reading the raw SQLite records.
+
+  \item \textbf{NFR-2: Timing Safety.} All hash comparisons must use constant-time primitives. Response time must not vary with the content of the submitted password or the stored hash.
+
+  \item \textbf{NFR-3: CSRF Protection.} All POST requests that modify server state (register, login, change password, logout) must include a valid CSRF token. Requests without a valid token must be rejected with HTTP 403.
+
+  \item \textbf{NFR-4: Rate Limiting.} At most 5 failed login attempts per username per 5-minute window must be enforced. Requests exceeding this limit must be rejected before hash computation.
+
+  \item \textbf{NFR-5: No External Dependencies.} The application must run using only the Python 3.10 standard library. No \texttt{pip install} step must be required.
+
+  \item \textbf{NFR-6: Salt Uniqueness on Change.} When a user changes their password, a new salt must be generated. The old salt must not be reused.
+\end{enumerate}

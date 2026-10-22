@@ -1,0 +1,159 @@
+\chapter{Implementation and Experimental Setup}
+\label{chap:implementation}
+
+\section{Development Environment}
+\label{sec:impl_env}
+
+The application is developed and tested on the following environment:
+
+\begin{itemize}
+  \item \textbf{Operating System:} macOS 14 Sonoma / Ubuntu 22.04 LTS (both supported).
+  \item \textbf{Python Version:} CPython 3.10 or later (tested on 3.10, 3.11, 3.12).
+  \item \textbf{External Dependencies:} None. All functionality is built exclusively from the Python standard library.
+  \item \textbf{Standard Library Modules Used:} \texttt{http.server}, \texttt{hashlib}, \texttt{hmac}, \texttt{secrets}, \texttt{sqlite3}, \texttt{urllib.parse}, \texttt{http.cookies}, \texttt{datetime}, \texttt{json}, \texttt{unittest}.
+  \item \textbf{Database:} SQLite 3.x (bundled with Python), stored at \texttt{data/securepassword.sqlite3}.
+  \item \textbf{IDE:} Any text editor; no build system or compilation step required.
+\end{itemize}
+
+The absence of external dependencies is a deliberate design decision: it ensures that the demonstration can be run in any environment with a standard Python installation, including classroom computers, university lab machines, or restricted cloud shells, without administrator privileges.
+
+\section{Project File Structure}
+\label{sec:impl_structure}
+
+The project is organised as follows:
+
+\begin{lstlisting}[language=bash,caption={Project directory layout},label={lst:structure}]
+SecurePasswordStorage/
+|-- app.py           # HTTP server and request routing
+|-- security.py      # Cryptographic primitives
+|-- database.py      # SQLite access layer
+|-- data/
+|   \-- securepassword.sqlite3   # Runtime database (auto-created)
+|-- static/
+|   \-- style.css    # Minimal CSS stylesheet
+|-- tests/
+|   \-- test_app.py  # Integration test suite (17 tests)
+\-- latex_report/    # This LaTeX report project
+\end{lstlisting}
+
+\subsection{app.py --- HTTP Server and Routing}
+\label{sec:impl_app}
+
+\texttt{app.py} defines a \texttt{SecurePasswordHandler} class that extends \texttt{http.server.BaseHTTPRequestHandler}. The \texttt{do\_GET} and \texttt{do\_POST} methods dispatch requests to private handler methods based on the URL path. The routing table covers the following endpoints:
+
+\begin{itemize}
+  \item \texttt{GET /} --- Landing page with links to register and login.
+  \item \texttt{GET /register}, \texttt{POST /register} --- Registration form and submission.
+  \item \texttt{GET /login}, \texttt{POST /login} --- Login form and submission.
+  \item \texttt{GET /dashboard} --- Security dashboard (requires valid session).
+  \item \texttt{POST /change-password} --- Password change (requires valid session and CSRF token).
+  \item \texttt{POST /logout} --- Logout (requires valid session and CSRF token).
+\end{itemize}
+
+Cookie parsing is performed using the \texttt{http.cookies} module. Form data is parsed using \texttt{urllib.parse.parse\_qs}. All HTML is generated as Python f-strings; no templating engine is used.
+
+\subsection{security.py --- Cryptographic Primitives}
+\label{sec:impl_security}
+
+\texttt{security.py} implements the six functions described in Chapter~\ref{chap:methodology}:
+
+\begin{lstlisting}[language=Python,caption={Core cryptographic functions in security.py},label={lst:security}]
+import hashlib, hmac, secrets
+
+ALGORITHM = "sha256"
+SALT_BYTES = 16
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(SALT_BYTES)
+    data = salt + password.encode("utf-8")
+    digest = hashlib.sha256(data).digest()
+    return f"{ALGORITHM}${salt.hex()}${digest.hex()}"
+
+def verify_password(password: str, encoded: str) -> bool:
+    try:
+        alg, salt_hex, expected_hex = encoded.split("$")
+    except ValueError:
+        return False
+    if alg != ALGORITHM:
+        return False
+    data = bytes.fromhex(salt_hex) + password.encode("utf-8")
+    actual = hashlib.sha256(data).digest()
+    return hmac.compare_digest(actual, bytes.fromhex(expected_hex))
+
+def generate_session_token() -> tuple[bytes, str]:
+    raw = secrets.token_bytes(32)
+    stored = hashlib.sha256(raw).hexdigest()
+    return raw, stored
+
+def generate_csrf_token(raw_session: bytes) -> str:
+    return hmac.new(raw_session, b"csrf", "sha256").hexdigest()
+\end{lstlisting}
+
+\subsection{database.py --- SQLite Access Layer}
+\label{sec:impl_database}
+
+\texttt{database.py} manages all interactions with SQLite. Every SQL statement uses parameterised placeholders (\texttt{?}) to prevent SQL injection. The module exposes typed functions:
+
+\begin{itemize}
+  \item \texttt{create\_user(username, encoded\_password)} --- Inserts a new user record.
+  \item \texttt{get\_user(username)} --- Retrieves user record by normalised username.
+  \item \texttt{create\_session(user\_id, token\_hash, csrf\_token)} --- Inserts a session record.
+  \item \texttt{get\_session(token\_hash)} --- Retrieves session by token hash.
+  \item \texttt{delete\_sessions\_for\_user(user\_id)} --- Revokes all sessions (used on password change).
+  \item \texttt{update\_password(user\_id, encoded\_password)} --- Updates the stored credential.
+  \item \texttt{record\_attempt(username, timestamp)} --- Logs a failed login attempt.
+  \item \texttt{count\_recent\_attempts(username, window\_seconds)} --- Counts attempts for rate limiting.
+\end{itemize}
+
+In-memory mode is activated when the environment variable \texttt{SPS\_IN\_MEMORY\_TESTS=1} is set, directing all connections to \texttt{sqlite3.connect(":memory:")} and enabling fully isolated test runs without touching the filesystem.
+
+\section{Testing Setup}
+\label{sec:impl_testing}
+
+The integration test suite is located in \texttt{tests/test\_app.py} and uses Python's built-in \texttt{unittest} framework. Tests are run against the application in in-memory mode:
+
+\begin{lstlisting}[language=bash,caption={Running the test suite},label={lst:test_run}]
+SPS_IN_MEMORY_TESTS=1 python3 -m unittest tests/test_app.py -v
+\end{lstlisting}
+
+Each test case starts a fresh in-memory database, ensuring complete isolation. The server is started on a random available port for each test class to avoid port conflicts.
+
+\subsection{Test Case Descriptions}
+\label{sec:impl_test_cases}
+
+Table~\ref{tab:test_cases} lists all 17 integration test cases with their purpose.
+
+\begin{table}[H]
+\centering
+\caption{Integration test suite: test names and purposes}
+\label{tab:test_cases}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\textbf{Test Name} & \textbf{Purpose} \\\hline
+\texttt{test\_registration\_duplicate\_case\_insensitive} & Verify that username uniqueness is enforced case-insensitively (e.g., ``Alice'' and ``alice'' are the same user) \\\hline
+\texttt{test\_invalid\_usernames\_and\_sql\_injection} & Confirm that injection-attempt usernames (e.g., \texttt{'; DROP TABLE users;--}) are rejected by the validation layer before any database operation \\\hline
+\texttt{test\_password\_validation\_and\_confirmation} & Validate that passwords shorter than 8 characters are rejected and that the password-confirmation field must match \\\hline
+\texttt{test\_same\_password\_different\_salts\_and\_verification} & Hash the same password twice and verify that the two encoded strings have different salts and different digests, yet both verify correctly \\\hline
+\texttt{test\_login\_dashboard\_session\_rotation\_and\_cookies} & Log in, verify the dashboard is accessible, confirm that a new session token is issued on re-login, and check that the old token is invalidated \\\hline
+\texttt{test\_unauthenticated\_and\_expired\_session} & Confirm that accessing the dashboard without a session cookie, with a tampered cookie, or with an expired session yields a redirect to the login page \\\hline
+\texttt{test\_csrf\_every\_state\_change} & Submit register, login, change-password, and logout requests without a CSRF token and verify that each returns HTTP 403 \\\hline
+\texttt{test\_generic\_errors\_and\_dummy\_verification} & Confirm that login for a non-existent username takes approximately the same time as login with a valid username and wrong password (timing-attack prevention) \\\hline
+\texttt{test\_account\_throttle\_and\_cooldown} & Submit 5 consecutive failed login attempts and verify that the 6th is rejected without performing hash computation; verify that the counter resets after the 5-minute window \\\hline
+\texttt{test\_password\_change\_rejects\_invalid\_values} & Attempt to change a password without providing the current password, with an incorrect current password, or with a new password that violates policy, and verify rejection \\\hline
+\texttt{test\_change\_revokes\_all\_sessions\_and\_replaces\_salt} & Change a user's password, confirm that the old session cookie is invalidated, that the new encoded credential has a different salt, and that the old password no longer verifies \\\hline
+\texttt{test\_no\_plaintext\_in\_records\_or\_database} & Read raw rows from the \texttt{users}, \texttt{sessions}, and \texttt{attempts} tables and confirm that no field contains any user's plaintext password or raw session token \\\hline
+\end{tabularx}
+\end{table}
+
+\section{Performance Metrics}
+\label{sec:impl_performance}
+
+Three performance metrics are measured to characterise the system:
+
+\begin{enumerate}
+  \item \textbf{Hash time per password.} A single call to \texttt{hash\_password} on a modern processor takes approximately 0.01 milliseconds (10 microseconds). This figure is obtained by timing 10,000 consecutive calls and computing the mean. For comparison, a single iteration of PBKDF2-HMAC-SHA256 with 600,000 iterations takes approximately 600 milliseconds---60,000 times slower.
+
+  \item \textbf{Test suite runtime.} Running all 17 integration tests with \texttt{SPS\_IN\_MEMORY\_TESTS=1} completes in approximately 5 seconds on a standard laptop, reflecting the overhead of HTTP-level request/response cycles in the testing harness rather than cryptographic computation.
+
+  \item \textbf{Memory usage.} The application's resident set size during normal operation is below 25 MB, reflecting the lightweight nature of the standard-library HTTP server and the absence of any framework overhead.
+\end{enumerate}

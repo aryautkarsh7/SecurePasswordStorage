@@ -1,0 +1,10 @@
+data/
+__pycache__/
+*.pyc
+*.sqlite*
+*.db
+*.pem
+.venv/
+server.log
+Overleaf_SecurePasswordStorage_Report.zip
+.DS_Store

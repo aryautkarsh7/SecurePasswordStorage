@@ -1,0 +1,57 @@
+\chapter{Introduction}
+\label{chap:introduction}
+
+\section{Background and Motivation}
+\label{sec:intro_background}
+
+Password-based authentication remains the most widely deployed mechanism for verifying user identity across web applications. Despite significant advances in multi-factor authentication and hardware security keys, the username-password pair continues to serve as the primary credential for the vast majority of online services. This ubiquity makes password storage one of the most consequential security decisions a developer makes: a single mistake at the storage layer can silently expose the credentials of every registered user in the event of a database breach.
+
+History demonstrates the severity of such failures repeatedly. Large-scale breaches at major organisations have exposed hundreds of millions of password records, frequently revealing that even technology-savvy companies stored credentials without adequate cryptographic protection. Attackers who obtain a database dump can subsequently crack poorly protected passwords offline---at billions of guesses per second on commodity graphics hardware---without the victim organisation ever detecting the attack. The downstream consequences include credential-stuffing attacks against other services, financial fraud, and identity theft, all stemming from a deficiency in a single architectural decision.
+
+This micro project addresses the educational dimension of the problem. While industry guidance from organisations such as the Open Web Application Security Project (OWASP) \cite{owasp2023} and the National Institute of Standards and Technology (NIST) \cite{nist2022} prescribes the use of adaptive hashing algorithms (bcrypt, scrypt, Argon2, PBKDF2), the underlying cryptographic principles---one-way functions, salting, and timing-safe comparison---are often opaque to students who have not yet encountered them in a concrete implementation context. This project bridges that gap by building a fully functional, self-contained authentication system in Python that makes the cryptographic machinery visible and inspectable through a live security dashboard.
+
+\section{Problem Statement}
+\label{sec:intro_problem}
+
+Three classes of password-storage failure are particularly common in practice:
+
+\begin{enumerate}
+  \item \textbf{Plaintext storage.} Passwords are recorded verbatim in the database. Any individual with read access to the data store---a malicious insider, a misconfigured backup, or an attacker who exploits a SQL-injection vulnerability---immediately possesses all user credentials. This approach provides zero protection.
+
+  \item \textbf{Unsalted or weakly-salted hashing.} Applying a cryptographic hash function (MD5, SHA-1, or even SHA-256) directly to a password without a unique, random salt allows precomputed rainbow-table attacks. An attacker who has built or downloaded a table mapping common passwords to their hashes can identify matching entries in the stolen database in milliseconds, regardless of how many users share the same password.
+
+  \item \textbf{Fast, unadapted hash functions.} Even when a unique salt is used, employing a single iteration of a general-purpose hash such as MD5 or SHA-256 leaves the system vulnerable to brute-force search. Modern GPUs can evaluate billions of SHA-256 computations per second, making exhaustive search over large password spaces feasible in hours rather than years.
+\end{enumerate}
+
+This project directly addresses the first two failure modes through salted SHA-256 with constant-time verification, and explicitly discusses the third as a limitation motivating the use of adaptive key-derivation functions in production deployments.
+
+\section{Approach and Contributions}
+\label{sec:intro_approach}
+
+The Secure Password Storage system demonstrates best-practice fundamentals using the following design choices:
+
+\begin{itemize}
+  \item \textbf{Unique random salts.} Each password registration generates 16 cryptographically random bytes (128 bits of entropy) via \texttt{secrets.token\_bytes}. The salt is concatenated with the UTF-8 encoded password before hashing, ensuring that two users with identical passwords produce distinct stored values, and eliminating the utility of precomputed rainbow tables.
+
+  \item \textbf{SHA-256 one-way hashing.} The salted password data is processed by the SHA-256 compression function, producing a 256-bit irreversible digest. The stored credential record contains only the salt and the hash---never the raw password.
+
+  \item \textbf{Constant-time comparison.} Password verification uses \texttt{hmac.compare\_digest}, which performs comparison in time proportional to the length of the strings rather than the position of the first differing byte. This eliminates the timing side-channel that would otherwise allow an attacker to make inferences about the stored hash by measuring response-time variations.
+
+  \item \textbf{Session-token hashing and CSRF protection.} Session tokens are hashed with SHA-256 before database storage, so a database read does not yield usable tokens. CSRF tokens are generated using HMAC-SHA256 bound to the session identifier, providing request-forgery protection for all state-changing endpoints.
+
+  \item \textbf{Rate limiting and account lockout.} A rolling 5-minute window limits failed login attempts to prevent online brute-force attacks.
+\end{itemize}
+
+The primary contributions of this project are:
+
+\begin{enumerate}
+  \item A complete, dependency-free Python implementation of salted SHA-256 password hashing with constant-time verification.
+  \item A live security dashboard that renders the stored salt and hash for each authenticated user, making cryptographic principles directly observable.
+  \item A comprehensive integration test suite (17 tests) that validates all security properties, including the absence of plaintext in the database and salt rotation on password change.
+  \item A reproducible academic demonstration environment requiring only Python~3.10 and no external packages.
+\end{enumerate}
+
+\section{Report Organisation}
+\label{sec:intro_organisation}
+
+The remainder of this report is structured as follows. Chapter~\ref{chap:literature} surveys the history of password storage mechanisms and identifies the educational gap this project addresses. Chapter~\ref{chap:theory} provides theoretical background on SHA-256, salting, timing-safe comparison, and related security mechanisms, together with the system's functional and non-functional requirements. Chapter~\ref{chap:methodology} describes the proposed methodology and system design, including algorithm specifications and database schema. Chapter~\ref{chap:implementation} details the implementation and experimental setup. Chapter~\ref{chap:results} presents results and a security analysis. Chapter~\ref{chap:conclusion} concludes with lessons learned and directions for future work.

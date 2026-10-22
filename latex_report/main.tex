@@ -1,0 +1,153 @@
+\documentclass[12pt,a4paper,oneside]{report}
+\usepackage{allianceproject}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!10},
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{green!60!black},
+  stringstyle=\color{orange},
+  inputencoding=utf8,
+  extendedchars=true
+}
+\addbibresource{references.bib}
+\graphicspath{{figures/}}
+
+% ===================== PROJECT METADATA =====================
+\projecttitle{Microproject 5: Secure Password Storage System}
+\projecttype{Micro Project 5}
+\coursecode{E1CSA311}
+\degree{Bachelor of Technology}
+\branch{Computer Science and Engineering}
+\department{Department of Computer Science and Engineering}
+\academicyear{2026--2027}
+\monthyear{October 2026}
+\supervisor{Dr. Ambairam Muthu Sivakrishna}{Assistant Professor}
+\hod{Dr. Oswalt Manoj S}
+\projectlogo{Alliance_University_Icon.png}
+\studentrows{
+Arya Utkarsh & 2411021060543 \\
+Akshat Kishore & 2411021060555 \\
+D Sai Shikhar Achari & 2411021060542 \\
+Joshua K R & 2411021060531 \\
+}
+% ============================================================
+
+\begin{document}
+\AllianceCoverPage
+\AllianceFrontMatter
+\AllianceTitlePage
+\AllianceCertificate
+\AllianceDeclaration
+
+\AllianceAcknowledgement{%
+We express our sincere gratitude to our supervisor, \AUSupervisor, for continuous guidance, technical feedback, and encouragement throughout this micro project. We also thank the Head of the Department, the project coordinators, reviewers, and faculty members of the Alliance School of Advanced Computing for their valuable suggestions and support. We acknowledge Alliance University for providing the academic environment and computing resources required for this work. Finally, we thank our peers, friends, and families for their encouragement and support.
+}
+
+\AllianceAbstract{Storing passwords securely is one of the most fundamental challenges in software security. Naive approaches such as plaintext storage or reversible encryption expose every user credential when a database is breached. This project presents and implements a local academic authentication system that demonstrates best-practice password storage using SHA-256 with unique random salts. Each password is concatenated with a 16-byte cryptographically random salt and passed through the SHA-256 hash function, producing a 32-byte (256-bit) irreversible digest. A constant-time HMAC comparison is used during verification to prevent timing side-channel attacks. Session tokens are independently hashed with plain SHA-256 before database storage. The system is implemented entirely in Python using only the standard library, with an SQLite backend, CSRF protection, rate limiting, and a live security dashboard that displays the actual stored salt and hash for each authenticated user. This design allows students to observe cryptographic principles in operation---the hash function, salt uniqueness, and one-way verification---without requiring any third-party packages. The project demonstrates that strong password protection is achievable with widely available primitives when they are composed correctly.}
+
+\tableofcontents\clearpage
+\listoftables\addcontentsline{toc}{chapter}{List of Tables}\clearpage
+\listoffigures\addcontentsline{toc}{chapter}{List of Figures}\clearpage
+\begin{abbreviations}
+SHA  & Secure Hash Algorithm\\
+HMAC & Hash-based Message Authentication Code\\
+CSRF & Cross-Site Request Forgery\\
+SQLite & Self-contained, serverless relational database engine\\
+HTTP & Hypertext Transfer Protocol\\
+HTTPS & HTTP Secure\\
+TLS & Transport Layer Security\\
+PBKDF2 & Password-Based Key Derivation Function 2\\
+MAD & Median Absolute Deviation (mentioned for comparison)\\
+UI & User Interface\\
+API & Application Programming Interface\\
+\end{abbreviations}
+
+\AllianceMainMatter
+\input{chapters/01_introduction.tex}
+\input{chapters/02_literature_review_and_gap_analysis.tex}
+\input{chapters/03_theoretical_background_and_requirements.tex}
+\input{chapters/04_proposed_methodology_and_system_design.tex}
+\input{chapters/05_implementation_and_experimental_setup.tex}
+\input{chapters/06_results_and_discussion.tex}
+\input{chapters/07_conclusion_and_future_scope.tex}
+
+\clearpage
+\printbibliography[heading=bibintoc,title={REFERENCES}]
+
+\appendix
+\chapter{Project Reproducibility and Setup}
+\label{app:setup}
+
+\section{Running the Application}
+\label{sec:running}
+The application requires Python 3.10 or later and no third-party packages. Clone or download the project, then execute:
+\begin{lstlisting}[language=bash]
+python3 app.py --port 8000
+\end{lstlisting}
+Navigate to \texttt{http://127.0.0.1:8000} in a browser. The SQLite database is created automatically in \texttt{data/securepassword.sqlite3}.
+
+\section{Running the Test Suite}
+\label{sec:tests}
+\begin{lstlisting}[language=bash]
+python3 -m unittest tests/test_app.py -v
+\end{lstlisting}
+All 17 integration tests should pass. Tests cover registration, login, password change, CSRF protection, rate limiting, session management, and absence of plaintext in the database.
+
+\section{Student Contribution Matrix}
+\label{sec:contribution}
+\begin{table}[H]
+\centering
+\caption{Team contribution record}
+\label{tab:contribution}
+\begin{tabularx}{\textwidth}{|l|X|c|}\hline
+\textbf{Student} & \textbf{Primary Contributions} & \textbf{Share (\%)}\\\hline
+Arya Utkarsh (2411021060543) & Problem formulation, system architecture, literature review & 25\\\hline
+Akshat Kishore (2411021060555) & SHA-256 cryptographic core, salting mechanism (security.py) & 25\\\hline
+D Sai Shikhar Achari (2411021060542) & Constant-time verification, CSRF defence, token hashing & 25\\\hline
+Joshua K R (2411021060531) & Web application (app.py), SQLite backend, test suite & 25\\\hline
+\end{tabularx}
+\end{table}
+
+\section{Team Presentation and Defense Guide}
+\label{sec:viva_guide}
+To ensure every team member can comfortably present and defend their individual contribution, the project responsibilities are mapped to key concepts as follows:
+
+\begin{enumerate}
+  \item \textbf{Arya Utkarsh (System Overview \& Problem Context):}
+  \begin{itemize}
+    \item \emph{Key Concept:} Explains why plaintext and unsalted hashes fail, how precomputed rainbow tables work, and how a 16-byte random salt invalidates precomputation.
+    \item \emph{Viva Question:} ``Why can't we just encrypt passwords with AES instead of hashing?''
+    \item \emph{Answer:} Encryption is two-way and requires a secret key; if the server or key is compromised, all passwords can be decrypted. Hashing is mathematically one-way; the plaintext is never stored or recoverable.
+  \end{itemize}
+
+  \item \textbf{Akshat Kishore (SHA-256 \& Salting Core):}
+  \begin{itemize}
+    \item \emph{Key Concept:} Explains the implementation in \texttt{security.py}: generating 16 bytes using \texttt{secrets.token\_bytes(16)}, concatenating with the password, computing SHA-256, and formatting as \texttt{sha256\$<salt>\$<hash>}.
+    \item \emph{Viva Question:} ``Is the salt a secret? Where is it stored?''
+    \item \emph{Answer:} No, the salt is not a secret. It is stored in the database right alongside the hash. Its purpose is to guarantee uniqueness so identical passwords result in different hashes.
+  \end{itemize}
+
+  \item \textbf{D Sai Shikhar Achari (Verification \& Attack Defences):}
+  \begin{itemize}
+    \item \emph{Key Concept:} Explains \texttt{verify\_password}, the necessity of \texttt{hmac.compare\_digest} against side-channel timing attacks, and session CSRF token binding.
+    \item \emph{Viva Question:} ``Why use \texttt{hmac.compare\_digest} instead of \texttt{==}?''
+    \item \emph{Answer:} Standard string equality (\texttt{==}) terminates at the first mismatching character (variable-time), leaking information to attackers via network latency measurements. \texttt{compare\_digest} executes in constant time.
+  \end{itemize}
+
+  \item \textbf{Joshua K R (Web Application, Database \& Testing):}
+  \begin{itemize}
+    \item \emph{Key Concept:} Explains the zero-dependency HTTP server (\texttt{app.py}), parameterized SQLite schema (\texttt{database.py}), rolling rate limiting, and the 17 automated integration tests.
+    \item \emph{Viva Question:} ``How do you prove that passwords are never stored in plaintext?''
+    \item \emph{Answer:} Integration test \texttt{test\_no\_plaintext\_in\_records\_or\_database} dumps every SQLite table row and asserts that the plaintext password does not appear anywhere in raw database storage.
+  \end{itemize}
+\end{enumerate}
+
+\chapter{Project Report Compliance Checklist}
+\label{app:checklist}
+This report has been structured to match the Alliance School of Advanced Computing project-report sequence: cover page, title page, certificate, declaration, acknowledgement, abstract, contents, lists, chapters, references, and appendices. Replace all placeholders and verify the final project-specific details before submission.
+
+\end{document}

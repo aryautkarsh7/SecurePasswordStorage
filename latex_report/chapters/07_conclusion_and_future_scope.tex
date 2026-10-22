@@ -1,0 +1,50 @@
+\chapter{Conclusion and Future Scope}
+\label{chap:conclusion}
+
+\section{Summary}
+\label{sec:conclusion_summary}
+
+This micro project designed, implemented, and validated a local academic authentication system that demonstrates secure password storage using SHA-256 with unique random salts. The system is written entirely in Python using only the standard library, stores credentials in an SQLite database, and provides a live security dashboard that renders the stored salt and hash digest for each authenticated user. An integration test suite of 17 tests verifies all claimed security properties, including the absence of plaintext in the database, salt rotation on password change, constant-time verification, CSRF protection, and rate limiting.
+
+The project achieves its primary educational objective: making the individual steps of cryptographically safe password storage visible, inspectable, and reproducible without requiring any installation beyond a standard Python interpreter. Students who work through the codebase gain a concrete understanding of why plaintext storage fails, how salting defeats rainbow-table precomputation, why one-way hashing prevents credential recovery, and why constant-time comparison is necessary to prevent timing side-channel attacks.
+
+\section{Key Cryptographic Lessons}
+\label{sec:conclusion_lessons}
+
+Three cryptographic principles are illustrated with particular clarity by this implementation:
+
+\begin{itemize}
+  \item \textbf{Salting defeats precomputation.} The dashboard's display of two distinct stored values for the same password---produced by two independent salt values---makes it intuitively clear why rainbow tables are ineffective against properly salted hashes. No table can cover the $2^{128}$-element space of possible 128-bit salts; every record must be attacked independently.
+
+  \item \textbf{One-way hashing prevents recovery.} The SHA-256 digest displayed on the dashboard cannot be reversed to recover the original password. Students can verify this directly by attempting to ``decode'' the hex string; the preimage resistance of SHA-256 ensures that no such decoding is possible, regardless of computational resources.
+
+  \item \textbf{Timing-safe comparison prevents side-channel leakage.} The use of \texttt{hmac.compare\_digest} instead of Python's \texttt{==} operator is a subtle but essential detail. The integration test that verifies timing parity between valid and invalid usernames makes this subtlety concrete and testable, rather than merely theoretical.
+\end{itemize}
+
+\section{Limitations}
+\label{sec:conclusion_limitations}
+
+The primary limitation of the system is the use of a single-pass SHA-256 computation without an iteration count or work factor. As discussed in Section~\ref{sec:results_prod_limits}, this makes the system vulnerable to offline brute-force attacks at GPU scale. A hash time of $\sim$0.01 ms is orders of magnitude too fast for production use; industry standards target 100--1000 ms per hash to impose meaningful cost on attackers. This limitation is intentional from an educational standpoint---the simplicity of \texttt{hashlib.sha256} is what makes the implementation legible---but it is clearly documented to prevent students from applying the same design in a production context.
+
+A secondary limitation is the lack of HTTPS support. The HTTP server accepts connections without TLS, meaning credentials are transmitted in plaintext over the network. For a local demonstration on \texttt{localhost} this is acceptable, but any deployment that accepts connections from remote clients would require TLS termination (e.g., via \texttt{ssl.wrap\_socket} or a reverse proxy such as nginx).
+
+\section{Future Scope}
+\label{sec:conclusion_future}
+
+Several directions for future development would increase the security and educational value of the system:
+
+\begin{enumerate}
+  \item \textbf{Adaptive KDF option.} Adding a mode that uses PBKDF2-HMAC-SHA256 (via \texttt{hashlib.pbkdf2\_hmac}) with a configurable iteration count would allow students to observe the performance difference between single-pass SHA-256 and a work-factor--scaled function. The dashboard could display the iteration count alongside the salt and hash.
+
+  \item \textbf{bcrypt and Argon2 comparison.} Integrating optional bcrypt (via the \texttt{bcrypt} package) and Argon2 (via \texttt{argon2-cffi}) modes, selectable at startup, would create a unified comparison platform for the three major families of password hashing schemes.
+
+  \item \textbf{Two-Factor Authentication (TOTP).} Adding time-based one-time password (TOTP) support using the standard \texttt{hmac} and \texttt{time} modules would demonstrate how a second authentication factor is implemented without third-party dependencies. The QR code for the TOTP secret could be generated using a pure-Python QR library.
+
+  \item \textbf{Audit log export.} The \texttt{activity} table already records login and logout events. A future version could expose a CSV or JSON export of the audit log through an authenticated admin endpoint, demonstrating how audit trails support security incident investigation.
+
+  \item \textbf{HTTPS with Let's Encrypt.} Wrapping the HTTP server with Python's \texttt{ssl} module and integrating with an ACME client (such as the standard-library-compatible \texttt{acme} protocol) would extend the project to cover transport security, completing the end-to-end security stack from credential storage to network transmission.
+
+  \item \textbf{Dark mode and responsive UI.} A user-interface enhancement to add dark mode and responsive CSS would improve the accessibility of the dashboard for classroom projection and for students working on high-DPI displays, without affecting any security properties.
+\end{enumerate}
+
+In conclusion, this project demonstrates that the fundamental principles of secure password storage---salting, one-way hashing, and timing-safe comparison---can be taught effectively through a concise, dependency-free, and fully testable implementation. The live security dashboard transforms abstract cryptographic concepts into directly observable artefacts, providing a foundation upon which students can build a deeper understanding of applied cryptography and web security.

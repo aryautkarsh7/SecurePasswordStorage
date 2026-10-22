@@ -1,0 +1,74 @@
+\chapter{Theoretical Background and Requirements}\label{background}
+
+\subsection{Causal Inference}
+A causal method is a statistical framework \cite{zhao2023causal, naser2023causality} used to estimate causal effects from observational data by identifying and quantifying the relationship between variables and target. Here, the method is initialized with the provided dataset, which includes treatment variables (features) and an outcome variable (target label). In causal inference, the term "treatment" refers to the independent variables, or features, that are believed to influence the outcome. These variables are typically manipulated to understand the impact on the target label, and on the other hand, the dependent variable seeks to predict or explain. By analyzing this relationship, the causal method aims to estimate how changes in the treatment variables can lead to changes in the outcome, helping to uncover underlying causal relationships within the data.
+
+In causal inference, the goal is to identify the causal effect of a treatment on an outcome. Eq. \ref{eq1} serves as the fundamental causal method, guiding the estimation of treatment effects in observational data settings.
+\begin{equation}\label{eq1}
+Y = f(X, U)
+\end{equation}
+
+
+$Y$ is the outcome variable (target label), $X$ represents the treatment (features), and $U$ represents any unobserved confounders or variables that might influence both $X$ and $Y$.
+
+The causal relationship aims to estimate how a change in $X$ (the treatment) will cause a change in $Y$ (outcome). The challenge is to correctly identify and adjust for any confounding variables $U$, which may distort the true causal effect. 
+
+
+\subsection{Linear Regression for Estimating the Causal Effect}
+
+Linear regression is a common method used to estimate causal effects \cite{wang2015visual} in observational data by the relationship between an outcome variable (\(Y\)) and one or more predictor variables (\(X\)). The general form of the regression equation is, shown in Eq. \ref{eq2}.
+
+\begin{equation}
+Y = \beta_0 + \beta_1 X + \beta_2 U + \epsilon
+\label{eq2}
+\end{equation}
+
+\( Y \) is the outcome variable (insider threat occurrence), \( X \) is the treatment variable (user activity patterns, system access logs), \( U \) represents confounding variables (user role, prior behavior), \( \beta_0 \) is the intercept, representing the baseline level of \( Y \) when all predictors are zero, \( \beta_1 \) is the causal effect of \( X \) on \( Y \), which we aim to estimate, \( \beta_2 \) accounts for the effect of the confounder \( U \) on , \( Y \) and \( \epsilon \) is the error term, representing unmeasured factors that influence \( Y \).
+
+Causal effect estimation focuses on determining the direct impact of the treatment variable (\(X\)) on the outcome (\(Y\)). The coefficient \(\beta_1\) represents this causal effect, indicating how changes in \(X\) influence \(Y\). If \(\beta_1\) is significantly different from zero, it suggests a strong relationship where variations in \(X\) lead to measurable changes in \(Y\). For instance, if insider threats (\(Y\)) increase with specific user actions (\(X\)), and this effect remains significant after accounting for confounding factors, it infers a causal relationship between user actions and insider threats. 
+
+However, confounding variables (\(U\)) can distort this relationship by influencing both \(X\) and \(Y\). If not accounted for, they can introduce bias and lead to spurious correlations. The coefficient \(\beta_2\) captures the effect of \(U\) on \(Y\), ensuring that the estimated effect of \(X\) on \(Y\) is not misinterpreted. For example, if job roles (\(U\)) impact both system access frequency (\(X\)) and the likelihood of insider threats (\(Y\)), failing to adjust for them \(U\) may lead to incorrect conclusions about the effect of access frequency on security risks. By including it \(U\) in the method, it can more accurately estimate the true causal impact of \(X\) on \(Y\), independent of external confounding influences.
+
+Causal inference helps us find what events may be causing unusual behavior. For example, using linear regression, the sudden rise in email activity leading to risky actions like accessing sensitive files can be observed. This helps us focus on real triggers, not just patterns.
+
+\subsection{LNN with Binary Classification and Entropy Loss}
+
+LNNs are a variant of Recurrent Neural Networks(RNN) inspired by biological neurons that dynamically adapt their behavior based on input. Unlike traditional DL methods with fixed weights, LNNs employ time-dependent differential equations, making them highly effective for sequential and time-series tasks.
+
+\subsubsection{LNN Dynamics}
+The LNN dynamics of neural networks \cite{hasani2021liquid} have time-dependent differential equations that control how hidden states change over time. Traditional feedforward neural networks use fixed weights and change over time based on the input sequence. This tasks with sequential and time-series data, where the time-based changes are very important \cite{akpinar2025novel, han2025robust}.
+
+The LNNs describe the network's state at a time \( t \) as a function of the previous state \( h(t-1) \), the current input \( x(t) \), and the network parameters \( w \). The hidden state at time \( t \), represented as \( h(t) \), changes based on a differential that models how components interact with each other over time, as shown in Eq. \ref{eq3}.
+
+
+\begin{equation}\label{eq3}
+\frac{d h(t)}{dt} = f(h(t), x(t), w)
+\end{equation}
+The hidden state at time \( t \) is \( h(t) \), the input is \( x(t) \), the learned parameters are \( w \), and \( f(\cdot) \) is a non-linear function that controls how the state changes. The method is flexible because it can change the weights based on changes in the input, which makes it more useful in real-world situations.
+
+ LNNs are suited for this specific task because they can learn from instances as well as respect logical rules. With this facility, predetermined policies, for example, "no file sharing outside working hours," can be incorporated into the system. Thus, LNNs make the system more intelligent and explainable, which are essential in insider threat identification.
+
+The sigmoid activation function is  used here, as it transforms real-valued outputs into a probability range between 0 and 1. This makes it ideal for problems where the output represents the likelihood of belonging to a particular class as represented in Eq. \ref{eq4}. The sigmoid function ensures that outputs are interpreted as probabilities, making it ideal for binary classification.
+
+\begin{equation}\label{eq4}
+\sigma(z) = \frac{1}{1 + e^{-z}}
+\end{equation}
+
+\( z \) is the weighted sum of inputs, which is shown in Eq. \ref{eq5}.
+\begin{equation}\label{eq5}
+z = W^T x + b
+\end{equation}
+\( W \) is the weight vector, \( x \) is the input feature vector and \( b \) is the bias term.
+
+
+Binary Cross-Entropy (BCE) is used as loss function here for binary classification of insider and normal employee. It measures the dissimilarity between predicted probabilities and actual labels, guiding the method to improve its predictions, shown in Eq. \ref{eq6}.
+
+\begin{equation}\label{eq6}
+L = - \frac{1}{N} \sum_{i=1}^{N} \left[ y_i \log(\hat{y}_i) + (1 - y_i) \log(1 - \hat{y}_i) \right]
+\end{equation}
+
+Here \( N \) is the number of training samples, \( y_i \) is the actual label (0 or 1) and \( \hat{y}_i \) is the predicted probability obtained from the sigmoid function.
+
+This loss function increases the penalty for wrong answers when the method is very confident. This helps the method learn to make more accurate and reliable predictions.
+
+LNNs are superior than regular RNNs, GRUs, or LSTMs at finding insider threats because they use differential equations to model continuous-time dynamics. Due to their adaptive hidden states weighing strategy it easier to keep track of small changes in users behavior over time than methods that only look at one time step. This is very important for finding subtle, long-term insider activity that other methods might miss or make too simple.

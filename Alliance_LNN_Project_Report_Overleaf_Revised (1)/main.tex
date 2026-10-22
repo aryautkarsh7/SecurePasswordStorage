@@ -1,0 +1,92 @@
+\documentclass[12pt,a4paper,oneside]{report}
+\usepackage{allianceproject}
+\addbibresource{references.bib}
+\graphicspath{{figures/}}
+
+% ===================== PROJECT METADATA =====================
+\projecttitle{An Adaptive Insider Threat Detection Framework Using Causal Analysis and Liquid Neural Networks}
+\projecttype{Micro Project}
+\coursecode{E1CSA311}
+\degree{Bachelor of Technology}
+\branch{Computer Science and Engineering}
+\department{Department of Computer Science and Engineering}
+\academicyear{2026--2027}
+\monthyear{Ocotber 2026}
+\supervisor{Dr. Ambairam Muthu Sivakrishna}{Assistant Professor}
+\hod{Dr. HOD Name}
+\projectlogo{Alliance_University_Icon.png}
+\studentrows{
+Karhitkeye & REGISTRATION NUMBER \\
+Student Two & REGISTRATION NUMBER \\
+Student Three & REGISTRATION NUMBER \\
+Student Four & REGISTRATION NUMBER \\
+}
+% Replace the student/HOD placeholders above before final submission.
+% ============================================================
+
+\begin{document}
+\AllianceCoverPage
+\AllianceFrontMatter
+\AllianceTitlePage
+\AllianceCertificate
+\AllianceDeclaration
+
+\AllianceAcknowledgement{%
+We express our sincere gratitude to our supervisor, \AUSupervisor, for continuous guidance, technical feedback, and encouragement throughout this design project. We also thank the Head of the Department, the Design Project coordinators, reviewers, and faculty members of the Alliance School of Advanced Computing for their valuable suggestions and support. We acknowledge Alliance University for providing the academic environment and computing resources required for this work. Finally, we thank our peers, friends, and families for their encouragement and support during the project.
+}
+
+\AllianceAbstract{Insider threats are still a significant security concern for the majority of organizations, as malicious insiders often act like actual individuals. Current machine learning, deep learning, graph-based, and hybrid methods have trouble with diversity of data, class imbalance, inaccurate classifications and sensitivity to feature granularity. These limitations make it less useful in real life, especially when minority insider classes are misclassified. In these situations, accuracy alone is not enough in these scenarios. The F1-score reflects the balance between precision and recall, thereby ensuring that the model not only reduces false positives but also correctly identifies true insiders. This research introduces an adaptive framework that combines causal inference with Median Absolute Deviation (MAD) refinement to preserve causally significant, stable predictors prior to temporal modeling via Liquid Neural Networks (LNN).  Experiments were conducted on the Carnegie Mellon University (CMU) CERTr4.2 dataset using three feature granularities like session, day, and behavioral inputs. Session-wise Preprocessing representation achieved the best results, with 97.98\% accuracy, 97.30\% precision, 98.71\% recall, 98.00\% F1-score, ROC-AUC of 99.6, and False Positive Rate (FPR) below 2.4\%. Th different user experiments have verified the system's adaptability, as the Session-wise Preprocessing tests have led to an accuracy of 95.77\% and an F1-score of 95.29\%. Cross-dataset experiments involving the training of the model on r4.2 and testing it on r5.2 and r6.2 were carried out, thus indicating solid generalization with F1-scores close to 93\% in spite of the changes in the dataset. Scalability experiments across different data ratios confirmed that the model maintained consistent performance regardless of dataset size. Ablation studies confirmed the necessity of the proposed pipeline, and statistical tests verified that the improvements were consistent and significant. In conclusion, the proposed method addresses key challenges of insider threat detection by delivering balanced precision and recall, and demonstrating robustness, scalability, and strong generalization across datasets and unseen users.}
+
+\tableofcontents\clearpage
+\listoftables\addcontentsline{toc}{chapter}{List of Tables}\clearpage
+\listoffigures\addcontentsline{toc}{chapter}{List of Figures}\clearpage
+\begin{abbreviations}
+AI & Artificial Intelligence\\
+ML & Machine Learning\\
+DL & Deep Learning\\
+ITD & Insider Threat Detection\\
+LNN & Liquid Neural Network\\
+MAD & Median Absolute Deviation\\
+SMOTE & Synthetic Minority Oversampling Technique\\
+CMU-CERT & Carnegie Mellon University CERT Insider Threat Dataset\\
+ROC-AUC & Area Under the Receiver Operating Characteristic Curve\\
+FPR & False Positive Rate\\
+GNN & Graph Neural Network\\
+LSTM & Long Short-Term Memory\\
+RNN & Recurrent Neural Network\\
+\end{abbreviations}
+
+\AllianceMainMatter
+\input{chapters/01_introduction.tex}
+\input{chapters/02_literature_review_and_gap_analysis.tex}
+\input{chapters/03_theoretical_background_and_requirements.tex}
+\input{chapters/04_proposed_methodology_and_system_design.tex}
+\input{chapters/05_implementation_and_experimental_setup.tex}
+\input{chapters/06_results_and_discussion.tex}
+\input{chapters/07_conclusion_and_future_scope.tex}
+
+\clearpage
+\printbibliography[heading=bibintoc,title={REFERENCES}]
+
+\appendix
+\chapter{Project Reproducibility and Supplementary Material}
+\section{Suggested Reproducibility Checklist}
+Record dataset version, preprocessing scripts, train/validation/test split seeds, software versions, hyperparameters, calibration settings, and hardware configuration used for every reported experiment. Where organizational or licensing constraints prevent release of a dataset, provide a reproducible schema and synthetic example.
+
+\section{Suggested Student Contribution Matrix}
+\begin{table}[H]
+\centering
+\caption{Team contribution record}
+\begin{tabularx}{\textwidth}{|l|X|c|}\hline
+\textbf{Student} & \textbf{Primary Contributions} & \textbf{Share (\%)}\\\hline
+Student One & Literature review, preprocessing, documentation & 25\\\hline
+Student Two & Causal analysis and feature refinement & 25\\\hline
+Student Three & LNN implementation and experimentation & 25\\\hline
+Student Four & Evaluation, visualization, testing and report integration & 25\\\hline
+\end{tabularx}
+\end{table}
+
+\chapter{Project Report Compliance Checklist}
+This report has been structured to match the Alliance School of Advanced Computing project-report sequence: cover page, title page, certificate, declaration, acknowledgement, abstract, contents, lists, chapters, references, and appendices. Replace all placeholders and verify the final project-specific details before submission.
+
+\end{document}

@@ -1,0 +1,105 @@
+\chapter{Literature Review and Gap Analysis}
+\label{chap:literature}
+
+\section{Early Password Storage Mechanisms}
+\label{sec:lit_early}
+
+The history of password storage in computing systems stretches back to the origins of multi-user operating systems in the 1960s and 1970s. Early UNIX systems stored passwords in a world-readable \texttt{/etc/passwd} file, initially in plaintext and later using the DES-based \texttt{crypt(3)} function. The \texttt{crypt} scheme applied a modified DES cipher to a constant zero-block using the password as the key, iterated 25 times to slow computation, and encoded the result alongside a 12-bit salt. While this represented a significant conceptual advance---introducing both one-way transformation and a salt to defeat precomputation---the 8-character password limit imposed by DES key-scheduling and the rapid growth in computational power eventually made brute-force attacks against even salted \texttt{crypt} hashes tractable.
+
+The fundamental insight of that era---that passwords should not be stored in recoverable form and that salts prevent two users with the same password from having identical records---remains valid today. What has changed is the computational gap between defenders and attackers: hardware improvements that once required decades to close can now be exploited in hours using commodity GPUs.
+
+\section{The MD5 and SHA-1 Era: Failures in Practice}
+\label{sec:lit_md5}
+
+With the widespread adoption of the Internet in the 1990s and early 2000s, web applications proliferated and password databases became attractive targets. Many developers turned to general-purpose cryptographic hash functions---primarily MD5 and SHA-1---as convenient replacements for \texttt{crypt}. These functions are fast, standardised, and produce fixed-length outputs, making them superficially attractive for password storage. However, their use introduced two categories of vulnerability.
+
+\subsection{Rainbow-Table Attacks}
+\label{sec:lit_rainbow}
+
+A rainbow table is a precomputed data structure that maps hash values to the passwords that produce them, exploiting a time-memory trade-off to recover passwords faster than online brute-force. When passwords are hashed without salts, an attacker need only compute the table once and can then look up any matching hash in the stolen database instantly. Rainbow tables for MD5-hashed passwords covering all alphanumeric strings up to eight characters have been publicly available for over two decades. Deployments that applied MD5 without salts were, in practice, storing recoverable passwords.
+
+\subsection{Collision and Preimage Attacks}
+\label{sec:lit_collision}
+
+Beyond rainbow tables, MD5 was found to be fundamentally broken from a cryptographic standpoint. Wang and Yu demonstrated practical MD5 collisions in 2004, and MD5 was subsequently deprecated for all security-sensitive applications \cite{kelsey2005}. SHA-1 followed a similar trajectory: theoretical collision attacks were shown in 2005, and practical chosen-prefix collisions were demonstrated by the SHAttered project in 2017. While collision resistance is a distinct property from preimage resistance (the property relevant to password hashing), the widespread academic consensus against MD5 and SHA-1 led practitioners to migrate to SHA-2 family functions. SHA-256, the 256-bit member of SHA-2, remains collision-resistant and preimage-resistant to the best of current knowledge.
+
+\section{Salted Hashes and Their Improvement}
+\label{sec:lit_salted}
+
+The introduction of per-user random salts substantially raised the bar against precomputed attacks. When each password record includes a unique salt, an attacker who obtains a database dump must crack each record independently; no precomputed table can span the full space of possible salted inputs. Early web frameworks such as Django (prior to its adoption of PBKDF2) used simple salted SHA-256, which provided meaningful protection against rainbow tables while remaining easy to implement. This approach---exactly the approach taken in the present project---is sufficient to demonstrate the core educational principles of one-way hashing and salt uniqueness.
+
+However, salted SHA-256 without iteration retains a critical weakness: a single SHA-256 evaluation takes approximately 200--300 nanoseconds on a modern processor, meaning a GPU cluster can evaluate billions of candidates per second against a stolen hash. A determined attacker with knowledge of the salt can still mount an offline brute-force attack at enormous scale. This observation motivates the key-derivation functions discussed in the following section.
+
+\section{Modern Key Derivation Functions}
+\label{sec:lit_kdfs}
+
+Contemporary guidance from OWASP \cite{owasp2023} and NIST \cite{nist2022} recommends password-specific key derivation functions (KDFs) that are deliberately slow and, in some cases, memory-hard. These functions are designed to require a configurable amount of computational work per evaluation, which can be increased over time to track improvements in attacker hardware.
+
+\subsection{bcrypt}
+\label{sec:lit_bcrypt}
+
+Provos and Mazi\`{e}res introduced bcrypt in 1999 \cite{provos1999} as an adaptive hashing scheme based on the Blowfish block cipher. A \emph{cost factor} parameter controls the number of rounds of the expensive key-setup phase; doubling the cost factor doubles the time required per hash. bcrypt has been widely adopted in web frameworks and remains a recommended choice for password hashing when memory-hardness is not required. Its primary limitation is a 72-byte maximum effective password length imposed by Blowfish key scheduling.
+
+\subsection{scrypt}
+\label{sec:lit_scrypt}
+
+Percival introduced scrypt in 2009 \cite{percival2009} as a sequential memory-hard function designed to impose both time and memory costs. By requiring the evaluator to read from a large, pseudo-randomly addressed memory buffer, scrypt ensures that parallelisation using ASICs or GPUs---which have limited memory bandwidth relative to their computational throughput---does not provide the attacker with an asymmetric advantage. scrypt forms the basis of several cryptocurrency proof-of-work schemes and is supported by Python's \texttt{hashlib} module.
+
+\subsection{Argon2}
+\label{sec:lit_argon2}
+
+Argon2 \cite{biryukov2016}, the winner of the Password Hashing Competition in 2015, represents the current state of the art. It offers three variants: Argon2d (data-dependent, suitable for cryptocurrency), Argon2i (data-independent, suitable for password hashing in side-channel-sensitive environments), and Argon2id (a hybrid recommended by OWASP). Argon2 parameters include time cost, memory cost, and parallelism degree, providing flexible tuning for a wide range of deployment scenarios.
+
+\subsection{PBKDF2}
+\label{sec:lit_pbkdf2}
+
+PBKDF2 (Password-Based Key Derivation Function 2), standardised in RFC 2898 and recommended by NIST SP 800-132, applies a pseudorandom function (typically HMAC-SHA256) to the password and salt iteratively. NIST SP 800-63B recommends at least 600,000 iterations of PBKDF2-HMAC-SHA256 for password hashing. Python's \texttt{hashlib} module exposes PBKDF2 via \texttt{hashlib.pbkdf2\_hmac}. While not memory-hard, PBKDF2 is widely supported and compliant with FIPS 140-2.
+
+Table~\ref{tab:algo_comparison} summarises the key properties of the hash algorithms discussed above.
+
+\begin{table}[H]
+\centering
+\caption{Comparison of hash algorithms for password storage}
+\label{tab:algo_comparison}
+\small
+\begin{tabularx}{\textwidth}{|p{3.2cm}|c|c|p{2.8cm}|X|}
+\hline
+\textbf{Algorithm} & \textbf{Output} & \textbf{Collision Res.} & \textbf{Speed} & \textbf{Password Use} \\\hline
+MD5       & 128 bits  & Broken          & Very fast ($>$1 GH/s) & No \\\hline
+SHA-1     & 160 bits  & Broken          & Very fast             & No \\\hline
+SHA-256   & 256 bits  & Strong          & Fast ($\sim$1 GH/s)   & Educational only \\\hline
+PBKDF2-SHA256 & 256 bits & Strong       & Configurable          & Yes (NIST) \\\hline
+bcrypt    & 192 bits  & Strong          & Configurable          & Yes (72-byte max) \\\hline
+scrypt    & Variable  & Strong          & Memory-hard           & Yes \\\hline
+Argon2id  & Variable  & Strong          & Time+Memory-hard      & Yes (OWASP Rec.) \\\hline
+\end{tabularx}
+\end{table}
+
+\section{Comparison of Password Storage Schemes}
+\label{sec:lit_schemes}
+
+Beyond the choice of hash algorithm, the overall storage \emph{scheme} determines the practical security of the system. Table~\ref{tab:scheme_comparison} compares common schemes along four dimensions relevant to this project.
+
+\begin{table}[H]
+\centering
+\caption{Comparison of password storage schemes}
+\label{tab:scheme_comparison}
+\begin{tabularx}{\textwidth}{|l|c|c|c|X|}
+\hline
+\textbf{Scheme} & \textbf{Salted} & \textbf{One-Way} & \textbf{Timing-Safe} & \textbf{Educational Value} \\\hline
+Plaintext storage      & No  & No  & N/A & Low (trivially broken) \\\hline
+MD5 (unsalted)         & No  & Yes & No  & Low (broken) \\\hline
+SHA-256 (unsalted)     & No  & Yes & No  & Moderate (rainbow-table demo) \\\hline
+Salted SHA-256         & Yes & Yes & Configurable & \textbf{High} (teaches core concepts) \\\hline
+PBKDF2-HMAC-SHA256     & Yes & Yes & Yes & High (production-ready) \\\hline
+bcrypt                 & Yes & Yes & Yes & High (widely deployed) \\\hline
+Argon2id               & Yes & Yes & Yes & High (state-of-the-art) \\\hline
+\end{tabularx}
+\end{table}
+
+\section{Gap Analysis}
+\label{sec:lit_gap}
+
+A survey of the existing literature and educational tools reveals a gap between two extremes. On one hand, introductory security textbooks explain salting and one-way hashing at a conceptual level without a hands-on implementation. On the other hand, production frameworks such as Django or Flask-Bcrypt abstract the cryptographic machinery behind high-level API calls, making it impossible for a student to observe the individual steps of salt generation, hash computation, and comparison. A live, inspectable demonstration application---one that renders the actual salt bytes and hash digest on screen for each authenticated user---addresses this gap directly.
+
+Furthermore, no widely distributed, purely standard-library Python application exists that combines all five security properties in one codebase: salted SHA-256 hashing, constant-time comparison, CSRF protection, rate limiting, and session-token hashing. The present project fills this niche, providing a reproducible academic artefact that instructors can deploy in minutes and students can study, modify, and extend.
